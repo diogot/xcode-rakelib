@@ -23,5 +23,5 @@ task :push do
 end
 
 def git_working_directory
-  Git.open(BASE_PATH)
+  Git.open(Path.base)
 end

@@ -9,6 +9,10 @@ Style/SpecialGlobalVars:
   Exclude:
     - 'main.rake'
 
+Metrics/BlockLength:
+  Exclude:
+  - '**/*.rake'
+
 # TODO: remove
 Metrics/LineLength:
   Max: 270
@@ -16,4 +20,4 @@ Metrics/LineLength:
 # TODO: remove
 Lint/RescueException:
   Exclude:
-    - 'setup-project.rake'
+    - 'setup.rake'
