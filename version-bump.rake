@@ -5,7 +5,7 @@
 
 desc 'Bump build number'
 task :bump_build do
-  sh "cd #{File.dirname(PROJECT_PATH)} && agvtool next-version -all"
+  sh "cd #{File.dirname(Config.instance.project_path)} && agvtool next-version -all"
 end
 
 desc 'Bump patch version'
@@ -35,7 +35,7 @@ task :set_version, [:version] do |_t, args|
 end
 
 def update_version(version)
-  sh "cd #{File.dirname(PROJECT_PATH)} && agvtool new-marketing-version #{version.to_s.strip}"
+  sh "cd #{File.dirname(Config.instance.project_path)} && agvtool new-marketing-version #{version.to_s.strip}"
 end
 
 def bump(version: '',
@@ -72,9 +72,9 @@ def current_build
 end
 
 def current_version_command
-  "cd #{File.dirname(PROJECT_PATH)} && agvtool mvers -terse1"
+  "cd #{File.dirname(Config.instance.project_path)} && agvtool mvers -terse1"
 end
 
 def current_build_command
-  "cd #{File.dirname(PROJECT_PATH)} && agvtool vers -terse"
+  "cd #{File.dirname(Config.instance.project_path)} && agvtool vers -terse"
 end

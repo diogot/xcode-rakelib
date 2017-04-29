@@ -7,7 +7,7 @@ rescue LoadError
 end
 
 def test_archive_config
-  CONFIG['test_archive']
+  Config.instance['test_archive']
 end
 
 # -- danger
@@ -111,6 +111,7 @@ def xcode(scheme: '',
           archive_path: '',
           reports_path: default_reports_path,
           artifacts_path: default_artifacts_path)
+  config = Config.instance
   xcode_log_file = xcode_log_file(report_name: report_name, artifacts_path: artifacts_path)
   report_file = "#{reports_path}/#{report_name}.xml"
 
@@ -119,10 +120,10 @@ def xcode(scheme: '',
   xcode_args << 'CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= PROVISIONING_PROFILE=' unless actions.include? 'archive'
   xcode_args << (archive_path.to_s.strip.empty? ? '-enableCodeCoverage YES' : "-archivePath '#{archive_path}'")
   xcode_args << destinations.map { |dest| "-destination '#{dest}'" }.join(' ')
-  xcode_args << if WORKSPACE_PATH.nil?
-                  "-project #{PROJECT_PATH}"
+  xcode_args << if config.workspace_path.nil?
+                  "-project #{config.project_path}"
                 else
-                  "-workspace '#{WORKSPACE_PATH}'"
+                  "-workspace '#{config.workspace_path}'"
                 end
   xcode_args << "-scheme '#{scheme}'"
   xcode_args << actions

@@ -7,7 +7,7 @@ task setup: %i[setup:dependencies setup:configure]
 
 namespace 'setup' do
   task dependencies: %i[install_dependencies] do
-    bundler_path = ENV['BUNDLER_PATH'] || CONFIG['bundler']['path']
+    bundler_path = ENV['BUNDLER_PATH'] || Config.instance['bundler']['path']
     if bundler_path.nil?
       sh 'bundle install'
     else

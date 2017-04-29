@@ -2,7 +2,7 @@
 
 desc 'Generate strings'
 task :swiftgen_strings do
-  config = CONFIG['swiftgen']
+  config = Config.instance['swiftgen']
   config['strings'].each do |strings, generated|
     sh "#{config['path']} strings -template dot-syntax-swift3 --output '#{generated}' '#{strings}'"
   end

@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'fileutils'
-require 'yaml'
 
 # Path methods
 class Path
@@ -20,11 +19,33 @@ class Path
   end
 end
 
-CONFIG = YAML.load_file Path.of 'rake-config.yml'
+# Configuration
+class Config
+  require 'yaml'
+  include Singleton
 
-APP_NAME = CONFIG['app_name']
-WORKSPACE_PATH = Path.of CONFIG['workspace_path']
-PROJECT_PATH = Path.of CONFIG['project_path']
+  attr_accessor :config
+
+  def initialize
+    @config = YAML.load_file Path.of 'rake-config.yml'
+  end
+
+  def [](keypath)
+    @config.dig(keypath)
+  end
+
+  def app_name
+    self['app_name']
+  end
+
+  def workspace_path
+    Path.of self['workspace_path']
+  end
+
+  def project_path
+    Path.of self['project_path']
+  end
+end
 
 task default: [:help]
 task :help do
