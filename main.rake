@@ -31,7 +31,8 @@ class Config
   end
 
   def [](keypath)
-    @config.dig(keypath)
+    path = keypath.split('.')
+    @config.dig(*path)
   end
 
   def app_name
