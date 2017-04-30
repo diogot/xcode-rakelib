@@ -6,22 +6,24 @@ rescue LoadError
   puts 'git not installed yet!'
 end
 
-desc 'Add tag with current version'
-task :add_tag do
-  version = full_version
-  puts "Add tag #{version}"
-  git_working_directory.add_tag(version)
-end
+namespace git do
+  desc 'Add tag with current version'
+  task :add_tag do
+    version = full_version
+    puts "Add tag #{version}"
+    git_working_directory.add_tag(version)
+  end
 
-desc 'Push current branch and tags'
-task :push do
-  puts 'git push'
-  g = git_working_directory
-  branch = g.current_branch
-  remote = 'origin'
-  git_working_directory.push(remote, branch, tags: true)
-end
+  desc 'Push current branch and tags'
+  task :push do
+    puts 'git push'
+    g = git_working_directory
+    branch = g.current_branch
+    remote = 'origin'
+    git_working_directory.push(remote, branch, tags: true)
+  end
 
-def git_working_directory
-  Git.open(Path.base)
+  def git_working_directory
+    Git.open(Path.base)
+  end
 end
