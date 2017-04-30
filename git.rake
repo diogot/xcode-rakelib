@@ -6,10 +6,10 @@ rescue LoadError
   puts 'git not installed yet!'
 end
 
-namespace git do
+namespace 'git' do
   desc 'Add tag with current version'
   task :add_tag do
-    version = full_version
+    version = ProjectVersion.new.full_version
     puts "Add tag #{version}"
     git_working_directory.add_tag(version)
   end
