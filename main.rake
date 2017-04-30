@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
-require 'fileutils'
-
 # Path methods
 class Path
+  require 'fileutils'
   # Base path
   def self.base
     Path.of '.'
@@ -33,6 +32,15 @@ class Config
   def [](keypath)
     path = keypath.split('.')
     @config.dig(*path)
+  end
+
+  def active(keypath)
+    config = self[keypath]
+    disabled?(config) ? nil : config
+  end
+
+  def disabled?(config)
+    config.nil? || !config['enabled']
   end
 
   def app_name

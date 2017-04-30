@@ -6,40 +6,40 @@ desc 'Install/update and configure project'
 task setup: %i[setup:install setup:dependencies]
 
 namespace 'setup' do
-  def disabled?(config)
-    config.nil? || !config['enabled']
-  end
-
   # -- Install
 
   task install: %i[bundler brew]
 
   desc 'Bundle install'
   task :bundler do
-    bundler = Config.instance['setup.bundler']
-    next if disabled? bundler
-    bundler_path = ENV['BUNDLER_PATH'] || bundler['path']
-    bundler_path_option = bundler_path.nil? ? '' : "--path=#{bundler_path}"
+    config = Config.instance.active'setup.bundler'
+    next if config.nil?
+    path = ENV['BUNDLER_PATH'] || config['path']
+    bundler_path_option = path.nil? ? '' : "--path=#{path}"
     sh "bundle check #{bundler_path_option} || bundle install #{bundler_path_option} --jobs=4 --retry=3"
   end
 
   desc 'Update brew and install/update formulas'
   task :brew do
-    brew = Config.instance['setup.brew']
-    next if disabled? brew
-    formulas = brew['formulas']
+    config = Config.instance.active 'setup.brew'
+    next if config.nil?
+    formulas = config['formulas']
     next if formulas.nil?
-    brew_update
-    formulas.each { |formula| brew_install formula }
+    brew = Brew.new
+    brew.update
+    formulas.each { |formula| brew.install formula }
   end
 
-  def brew_update
-    sh 'brew update || brew update'
-  end
+  # Brew class
+  class Brew
+    def update
+      Rake.sh 'brew update || brew update'
+    end
 
-  def brew_install(formula)
-    raise 'no formula' if formula.to_s.strip.empty?
-    sh " ( brew list #{formula} ) && ( brew outdated #{formula} || brew upgrade #{formula} ) || ( brew install #{formula} ) "
+    def install(formula)
+      raise 'no formula' if formula.to_s.strip.empty?
+      Rake.sh " ( brew list #{formula} ) && ( brew outdated #{formula} || brew upgrade #{formula} ) || ( brew install #{formula} ) "
+    end
   end
 
   # - Dependencies
@@ -48,8 +48,8 @@ namespace 'setup' do
 
   desc 'Updated submodules'
   task :submodules do
-    submodules = Config.instance['setup.submodules']
-    next if disabled? submodules
+    submodules = Config.instance.active 'setup.submodules'
+    next if submodules.nil?
     sh 'git submodule update --init --recursive'
   end
 
@@ -57,46 +57,55 @@ namespace 'setup' do
 
   desc 'CocoaPods'
   task :cocoapods do
-    cocoapods = Config.instance['setup.cocoapods']
-    next if disabled? cocoapods
-    if needs_to_run_pod_install
-      pod_repo_update
-      pod_install
-    else
-      puts 'Skipping pod install because Pods seems updated'
-    end
+    cocoapods = Config.instance.active 'setup.cocoapods'
+    next if cocoapods.nil?
+    Cocoapods.new.run
   end
 
   desc 'Pod repo update'
   task :pod_repo_update do
-    pod_repo_update
+    Cocoapods.new.pod_repo_update
   end
 
   desc 'Pod install'
   task :pod_install do
-    pod_install
+    Cocoapods.new.pod_install
   end
 
-  def needs_to_run_pod_install
-    !FileUtils.identical?(Path.of('Podfile.lock'), Path.of('Pods/Manifest.lock'))
-  rescue Exception => _
-    true
-  end
+  # Cocoapods class
+  class Cocoapods
+    require 'fileutils'
 
-  def pod_repo_update
-    sh 'bundle exec pod repo update --silent'
-  end
+    def run
+      if needs_to_run_pod_install
+        pod_repo_update
+        pod_install
+      else
+        puts 'Skipping pod install because Pods seems updated'
+      end
+    end
 
-  def pod_install
-    sh 'bundle exec pod install'
+    def needs_to_run_pod_install
+      !FileUtils.identical?(Path.of('Podfile.lock'), Path.of('Pods/Manifest.lock'))
+    rescue Exception => _
+      true
+    end
+
+    def pod_repo_update
+      Rake.sh 'bundle exec pod repo update --silent'
+    end
+
+    def pod_install
+      Rake.sh 'bundle exec pod install'
+    end
   end
 
   # -- Carthage
 
   desc 'Carthage'
   task :carthage do
-    carthage = Config.instance['setup.carthage']
-    next if disabled? carthage
+    carthage = Config.instance.active 'setup.carthage'
+    next if carthage.nil?
     Rake::Task['setup:carthage_install'].invoke
   end
 
