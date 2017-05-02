@@ -61,6 +61,8 @@ task :help do
   sh 'rake -T'
 end
 
+# rubocop:disable Style/SpecialGlobalVars
 at_exit do
   puts '           ¯\_(ツ)_/¯' unless $!.nil? || $!.is_a?(SystemExit) && $!.success?
 end
+# rubocop:enable Style/SpecialGlobalVars

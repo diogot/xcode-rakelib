@@ -85,11 +85,13 @@ namespace 'setup' do
       end
     end
 
+    # rubocop:disable Lint/RescueException
     def needs_to_run_pod_install
       !FileUtils.identical?(Path.of('Podfile.lock'), Path.of('Pods/Manifest.lock'))
     rescue Exception => _
       true
     end
+    # rubocop:enable Lint/RescueException
 
     def pod_repo_update
       Rake.sh 'bundle exec pod repo update --silent'

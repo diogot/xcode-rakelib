@@ -5,10 +5,6 @@ Metrics/ParameterLists:
 Metrics/MethodLength:
   Max: 20
 
-Style/SpecialGlobalVars:
-  Exclude:
-    - 'main.rake'
-
 Metrics/BlockLength:
   Exclude:
   - '**/*.rake'
@@ -16,8 +12,3 @@ Metrics/BlockLength:
 # TODO: remove
 Metrics/LineLength:
   Max: 270
-
-# TODO: remove
-Lint/RescueException:
-  Exclude:
-    - 'setup.rake'
