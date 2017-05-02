@@ -1,4 +1,5 @@
-#
+# frozen_string_literal: true
+
 # Xcode-rakelib - https://github.com/diogot/xcode-rakelib
 # Copyright (c) 2017 Diogo Tridapalli
 #
@@ -19,8 +20,6 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
-# frozen_string_literal: true
 
 begin
   require 'plist'
@@ -70,6 +69,7 @@ namespace 'xcode' do
       @config = Config.instance
       @artifacts_path = default_artifacts_path
       @reports_path = default_reports_path
+      @test_report_name = 'tests'
     end
 
     # Paths
@@ -108,19 +108,15 @@ namespace 'xcode' do
 
     # Xcode
 
-    def test_report_name
-      'tests'
-    end
-
     def run_test
       xcode scheme: @config['xcode.tests.scheme'],
             actions: 'clean analyze test',
             destinations: @config['xcode.tests.destinations'],
-            report_name: test_report_name
+            report_name: @test_report_name
     end
 
     def test_report_path
-      xcode_log_file(report_name: test_report_name)
+      xcode_log_file(report_name: @test_report_name)
     end
 
     def archive(environment)
