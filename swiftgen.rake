@@ -27,7 +27,7 @@ task swiftgen: %i[swiftgen:strings]
 namespace 'swiftgen' do
   desc 'Generate strings'
   task :strings do
-    config = Config.instance.active'swiftgen.strings'
+    config = Config.instance.active 'swiftgen.strings'
     next if config.nil?
     path = config['path']
     template = config['template']

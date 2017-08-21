@@ -33,7 +33,7 @@ namespace 'setup' do
 
   desc 'Bundle install'
   task :bundler do
-    config = Config.instance.active'setup.bundler'
+    config = Config.instance.active 'setup.bundler'
     next if config.nil?
     path = ENV['BUNDLER_PATH'] || config['path']
     bundler_path_option = path.nil? ? '' : "--path=#{path}"
