@@ -133,7 +133,7 @@ namespace 'xcode' do
       config = @config['xcode.release'][environment]
       export_ipa(archive_path: archive_path(config['output']),
                  export_path: export_path(config['output']),
-                 build_plist: create_export_plist,
+                 build_plist: create_export_plist(aditional_options: config['sign']),
                  report_name: "export-#{environment}")
     end
 
@@ -177,8 +177,10 @@ namespace 'xcode' do
       Rake.sh "set -o pipefail && #{xcode_version} xcrun xcodebuild -exportArchive -archivePath '#{archive_path}' -exportPath '#{export_path}' -exportOptionsPlist '#{build_plist}' | tee '#{xcode_log_file}' | xcpretty --color --no-utf -r junit -o '#{report_file}'"
     end
 
-    def create_export_plist
-      plist = { method: 'app-store' }
+    def create_export_plist(aditional_options: {})
+      default_plist = { method: 'app-store' }
+      plist = default_plist.merge(aditional_options)
+      puts plist
       plist_path = "#{@artifacts_path}/export.plist"
       plist.save_plist plist_path
       plist_path
