@@ -146,8 +146,8 @@ namespace 'xcode' do
       xcode(xcode_args: "analyze build-for-testing -enableCodeCoverage YES #{xcode_args_for_build}", report_name: "#{report_name}-build")
 
       xcode_args_for_test = xcode_args
-      xcode_args_for_test << destinations.map { |dest| "-destination '#{dest}'" }.join(' ')
       xcode_args_for_test << 'test-without-building'
+      xcode_args_for_test << destinations.map { |dest| "-destination '#{dest}'" }.join(' ')
       xcode(xcode_args: xcode_args_for_test.join(' '), report_name: "#{report_name}-tests")
     end
 
