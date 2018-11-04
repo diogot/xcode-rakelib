@@ -146,9 +146,9 @@ namespace 'xcode' do
       xcode(xcode_args: "analyze build-for-testing -enableCodeCoverage YES #{xcode_args_for_build}", report_name: "#{report_name}-build")
 
       xcode_args_for_test = xcode_args
-      xcode_args_for_test << 'test-without-building'
       xcode_args_for_test << destinations.map { |dest| "-destination '#{dest}'" }.join(' ')
-      xcode(xcode_args: xcode_args_for_test.join(' '), report_name: "#{report_name}-tests")
+      xcode_args_for_test = xcode_args_for_test.join(' ')
+      xcode(xcode_args: "test-without-building -disable-concurrent-destination-testing #{xcode_args_for_test}", report_name: "#{report_name}-tests")
     end
 
     def test_report_path
@@ -205,7 +205,7 @@ namespace 'xcode' do
       report_file = "#{@reports_path}/#{report_name}.xml"
 
       Rake.sh "rm -f '#{xcode_log_file}' '#{report_file}'"
-      Rake.sh "set -o pipefail && #{xcode_version} xcrun xcodebuild #{xcode_args} | tee '#{xcode_log_file}' | xcpretty --color --no-utf -r junit -o '#{report_file}'"      
+      Rake.sh "set -o pipefail && #{xcode_version} xcrun xcodebuild #{xcode_args} | tee '#{xcode_log_file}' | xcpretty --color --no-utf -r junit -o '#{report_file}'"
     end
 
     def export_ipa(archive_path: '',
