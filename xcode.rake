@@ -32,19 +32,19 @@ end
 
 desc 'Run danger'
 task :danger do
-  command = 'bundle exec danger --verbose'
+  command = 'bundle exec local --verbose'
   xcode = Xcode.new
   build_file = File.expand_path('result.json', xcode.default_reports_path)
-  sh "#{command} --dangerfile=danger/ValidationDangerfile --danger_id='validation'"
-  sh "cat #{xcode.test_report_path} | XCPRETTY_JSON_FILE_OUTPUT=#{build_file} xcpretty -f `xcpretty-json-formatter`"
+  Rake.sh "#{command} --dangerfile=danger/ValidationDangerfile --danger_id='validation'"
+  Rake.sh "cat #{xcode.test_report_path} | XCPRETTY_JSON_FILE_OUTPUT=#{build_file} xcpretty -f `xcpretty-json-formatter`"
   ENV['XCODEBUILD_REPORT'] = build_file
-  sh "#{command} --dangerfile=danger/TestDangerfile --danger_id='xcodebuild'"
+  Rake.sh "#{command} --dangerfile=danger/TestDangerfile --danger_id='xcodebuild'"
   xcode.tests_results.each do |result|
     ENV['XCODEBUILD_REPORT'] = result[:xcodebuild_report]
     ENV['DANGER_TEST_DESCRIPTION'] = result[:test_description]
-    sh "#{command} --dangerfile=danger/TestDangerfile --danger_id='xcodebuild-#{result[:destination]}'"
+    Rake.sh "#{command} --dangerfile=danger/TestDangerfile --danger_id='xcodebuild-#{result[:destination]}'"
   end
-  sh "#{command} --dangerfile=danger/CompletionDangerfile --danger_id='completion'"
+  Rake.sh "#{command} --dangerfile=danger/CompletionDangerfile --danger_id='completion'"
 end
 
 namespace 'xcode' do
