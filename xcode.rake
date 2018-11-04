@@ -32,7 +32,7 @@ end
 
 desc 'Run danger'
 task :danger do
-  command = 'bundle exec local --verbose'
+  command = 'bundle exec danger --verbose'
   xcode = Xcode.new
   build_file = File.expand_path('result.json', xcode.default_reports_path)
   Rake.sh "#{command} --dangerfile=danger/ValidationDangerfile --danger_id='validation'"
