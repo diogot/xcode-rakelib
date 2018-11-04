@@ -76,7 +76,7 @@ namespace 'xcode' do
   end
 
   task :bla do
-    Xcode.new.last_test_logs_plist
+    Xcode.new.xcode_version
   end
 
   # Xcode helper class
@@ -303,17 +303,31 @@ namespace 'xcode' do
 
     def xcode_version
       version = @config['xcode.version']
-      xcodes = `mdfind "kMDItemCFBundleIdentifier = 'com.apple.dt.Xcode' && kMDItemVersion = '#{version}'"`.chomp.split("\n")
-      raise "Xcode version #{version} not found, If it's already installed update your Spotlight index with 'mdimport /Applications/Xcode*'\n\n" if xcodes.empty?
+      latest_xcode_version = installed_xcodes.select { |xcode| Gem::Dependency.new('', "~> #{version}").match?('', fetch_version(xcode)) }.max { |a, b| fetch_version(a) <=> fetch_version(b) }
+      raise "Xcode version #{version} not found,\n\n" if latest_xcode_version.nil?
 
-      # Order by version and get the latest one
-      vers = ->(path) { `mdls -name kMDItemVersion -raw "#{path}"` }
-      latest_xcode_version = xcodes.sort { |p1, p2| vers.call(p1) <=> vers.call(p2) }.last
       %(DEVELOPER_DIR="#{latest_xcode_version}/Contents/Developer")
+    end
+
+    def installed_xcodes
+      result = `mdfind "kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'" 2>/dev/null`.split("\n")
+      if result.empty?
+        result = `find /Applications -name '*.app' -type d -maxdepth 1 -exec sh -c \
+        'if [ "$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" \
+        "{}/Contents/Info.plist" 2>/dev/null)" == "com.apple.dt.Xcode" ]; then echo "{}"; fi' ';'`.split("\n")
+      end
+      result
+    end
+
+    def fetch_version(path)
+      output = `/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" #{path}/Contents/Info.plist`
+      return '0.0' if output.nil? || output.empty? # ¯\_(ツ)_/¯
+
+      output.split("\n").first
     end
   end
 
-  # Based on https://github.com/fastlane/fastl  ane/blob/master/fastlane_core/lib/fastlane_core/test_parser.rb
+  # Based on https://github.com/fastlane/fastlane/blob/master/fastlane_core/lib/fastlane_core/test_parser.rb
   class TestParser
     attr_accessor :data
 
