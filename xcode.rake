@@ -23,7 +23,7 @@
 
 begin
   require 'plist'
-  require 'JSON'
+  require 'json'
 rescue LoadError
   puts 'plist not installed yet!'
 end
@@ -36,7 +36,7 @@ task :danger do
   xcode = Xcode.new
   build_file = File.expand_path('result.json', xcode.default_reports_path)
   Rake.sh "#{command} --dangerfile=danger/ValidationDangerfile --danger_id='validation'"
-  Rake.sh "cat #{xcode.test_report_path} | XCPRETTY_JSON_FILE_OUTPUT=#{build_file} xcpretty -f `xcpretty-json-formatter`"
+  Rake.sh "cat #{xcode.test_report_path} | XCPRETTY_JSON_FILE_OUTPUT=#{build_file} bundle exec xcpretty -f `xcpretty-json-formatter`"
   ENV['XCODEBUILD_REPORT'] = build_file
   Rake.sh "#{command} --dangerfile=danger/TestDangerfile --danger_id='xcodebuild'"
   xcode.tests_results.each do |result|
