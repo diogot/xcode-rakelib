@@ -148,7 +148,7 @@ namespace 'xcode' do
       xcode_args_for_test = xcode_args
       xcode_args_for_test << destinations.map { |dest| "-destination '#{dest}'" }.join(' ')
       xcode_args_for_test = xcode_args_for_test.join(' ')
-      xcode(xcode_args: "test-without-building #{xcode_args_for_test}", report_name: "#{report_name}-tests")
+      xcode(xcode_args: "test-without-building -disable-concurrent-destination-testing #{xcode_args_for_test}", report_name: "#{report_name}-tests")
     end
 
     def test_report_path
