@@ -76,7 +76,7 @@ namespace 'xcode' do
   end
 
   task :bla do
-    Xcode.new.xcode_version
+    puts Xcode.new.tests_results
   end
 
   # Xcode helper class
@@ -148,7 +148,7 @@ namespace 'xcode' do
       xcode_args_for_test = xcode_args
       xcode_args_for_test << destinations.map { |dest| "-destination '#{dest}'" }.join(' ')
       xcode_args_for_test = xcode_args_for_test.join(' ')
-      xcode(xcode_args: "test-without-building -disable-concurrent-destination-testing #{xcode_args_for_test}", report_name: "#{report_name}-tests")
+      xcode(xcode_args: "test-without-building #{xcode_args_for_test}", report_name: "#{report_name}-tests")
     end
 
     def test_report_path
@@ -321,7 +321,7 @@ namespace 'xcode' do
 
     def fetch_version(path)
       output = `/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" #{path}/Contents/Info.plist`
-      return '0.0' if output.nil? || output.empty? # ¯\_(ツ)_/¯
+      return '0.0' if output.nil? || output.empty?
 
       output.split("\n").first
     end
@@ -351,7 +351,7 @@ namespace 'xcode' do
 
     def ensure_file_valid!
       format_version = raw_json['FormatVersion']
-      supported_versions = ['1.1', '1.2']
+      supported_versions = %w['1.1', '1.2']
       raise("Format version '#{format_version}' is not supported, must be #{supported_versions.join(', ')}") unless supported_versions.include?(format_version)
     end
 
