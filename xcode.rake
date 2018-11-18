@@ -139,13 +139,13 @@ namespace 'xcode' do
                     end
       xcode_args << "-scheme '#{scheme}'"
 
-      xcode_args_for_build = xcode_args
+      xcode_args_for_build = [] + xcode_args
       xcode_args_for_build << '-destination "generic/platform=iOS Simulator"'
       xcode_args_for_build = xcode_args_for_build.join' '
       xcode(xcode_args: "clean #{xcode_args_for_build}", report_name: "#{report_name}-clean")
       xcode(xcode_args: "analyze build-for-testing -enableCodeCoverage YES #{xcode_args_for_build}", report_name: "#{report_name}-build")
 
-      xcode_args_for_test = xcode_args
+      xcode_args_for_test = [] + xcode_args
       xcode_args_for_test << destinations.map { |dest| "-destination '#{dest}'" }.join(' ')
       xcode_args_for_test = xcode_args_for_test.join(' ')
       xcode(xcode_args: "test-without-building -disable-concurrent-destination-testing #{xcode_args_for_test}", report_name: "#{report_name}-tests")
@@ -351,7 +351,7 @@ namespace 'xcode' do
 
     def ensure_file_valid!
       format_version = raw_json['FormatVersion']
-      supported_versions = %w['1.1', '1.2']
+      supported_versions = %w[1.1 1.2]
       raise("Format version '#{format_version}' is not supported, must be #{supported_versions.join(', ')}") unless supported_versions.include?(format_version)
     end
 
