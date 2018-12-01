@@ -53,7 +53,7 @@ class Danger
   end
 
   def run
-    command = 'bundle exec danger local --verbose'
+    command = 'bundle exec danger --verbose'
     build_file = File.expand_path('result.json', @xcode.default_reports_path)
     Rake.sh "#{command} --dangerfile=danger/ValidationDangerfile --danger_id='validation'"
     Rake.sh "cat #{@xcode.test_report_path} | XCPRETTY_JSON_FILE_OUTPUT=#{build_file} xcpretty -f `bundle exec xcpretty-json-formatter`"
