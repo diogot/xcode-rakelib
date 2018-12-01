@@ -47,10 +47,40 @@ task :danger do
   Rake.sh "#{command} --dangerfile=danger/CompletionDangerfile --danger_id='completion'"
 end
 
+class Danger
+  def initialize(xcode)
+    @xcode = xcode
+  end
+
+  def run
+    command = 'bundle exec danger local --verbose'
+    build_file = File.expand_path('result.json', @xcode.default_reports_path)
+    Rake.sh "#{command} --dangerfile=danger/ValidationDangerfile --danger_id='validation'"
+    Rake.sh "cat #{@xcode.test_report_path} | XCPRETTY_JSON_FILE_OUTPUT=#{build_file} xcpretty -f `bundle exec xcpretty-json-formatter`"
+    ENV['XCODEBUILD_REPORT'] = build_file
+    Rake.sh "#{command} --dangerfile=danger/TestDangerfile --danger_id='xcodebuild'"
+    @xcode.tests_results.each do |result|
+      ENV['XCODEBUILD_REPORT'] = result[:xcodebuild_report]
+      ENV['DANGER_TEST_DESCRIPTION'] = result[:test_description]
+      Rake.sh "#{command} --dangerfile=danger/TestDangerfile --danger_id='xcodebuild-#{result[:destination]}'"
+    end
+    Rake.sh "#{command} --dangerfile=danger/CompletionDangerfile --danger_id='completion'"
+  end
+end
+
 namespace 'xcode' do
   desc 'Run unit tests'
-  task :tests do
-    Xcode.new.run_test
+  task :tests, [:run_danger] do |_t, args|
+    run_danger = args[:run_danger]
+    xcode = Xcode.new
+    begin
+      xcode.run_test
+    rescue
+      raise
+    ensure
+      Danger.new(xcode).run if run_danger
+    end
+
   end
 
   task :clean_artifacts do
