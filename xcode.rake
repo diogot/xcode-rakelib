@@ -30,57 +30,57 @@ end
 
 # -- danger
 
-desc 'Run danger'
-task :danger do
-  command = 'bundle exec danger --verbose'
-  xcode = Xcode.new
-  build_file = File.expand_path('result.json', xcode.default_reports_path)
-  Rake.sh "#{command} --dangerfile=danger/ValidationDangerfile --danger_id='validation'"
-  Rake.sh "cat #{xcode.test_report_path} | XCPRETTY_JSON_FILE_OUTPUT=#{build_file} xcpretty -f `bundle exec xcpretty-json-formatter`"
-  ENV['XCODEBUILD_REPORT'] = build_file
-  Rake.sh "#{command} --dangerfile=danger/TestDangerfile --danger_id='xcodebuild'"
-  xcode.tests_results.each do |result|
-    ENV['XCODEBUILD_REPORT'] = result[:xcodebuild_report]
-    ENV['DANGER_TEST_DESCRIPTION'] = result[:test_description]
-    Rake.sh "#{command} --dangerfile=danger/TestDangerfile --danger_id='xcodebuild-#{result[:destination]}'"
-  end
-  Rake.sh "#{command} --dangerfile=danger/CompletionDangerfile --danger_id='completion'"
-end
-
 class Danger
   def initialize(xcode)
     @xcode = xcode
+    @config = Config.instance
+    @danger = 'bundle exec danger local --verbose'
   end
 
-  def run
-    command = 'bundle exec danger --verbose'
+  def pre_test
+    dangerfile = @config['danger.dangerfile_paths.pre_test']
+    return if dangerfile.nil?
+    Rake.sh "#{@danger} --dangerfile=#{dangerfile} --danger_id='pre_test'"
+  end
+
+  def tests
+    dangerfile = @config['danger.dangerfile_paths.test']
+    return if dangerfile.nil?
     build_file = File.expand_path('result.json', @xcode.default_reports_path)
-    Rake.sh "#{command} --dangerfile=danger/ValidationDangerfile --danger_id='validation'"
     Rake.sh "cat #{@xcode.test_report_path} | XCPRETTY_JSON_FILE_OUTPUT=#{build_file} xcpretty -f `bundle exec xcpretty-json-formatter`"
     ENV['XCODEBUILD_REPORT'] = build_file
-    Rake.sh "#{command} --dangerfile=danger/TestDangerfile --danger_id='xcodebuild'"
+    Rake.sh "#{@danger} --dangerfile=#{dangerfile} --danger_id='xcodebuild'"
     @xcode.tests_results.each do |result|
       ENV['XCODEBUILD_REPORT'] = result[:xcodebuild_report]
       ENV['DANGER_TEST_DESCRIPTION'] = result[:test_description]
-      Rake.sh "#{command} --dangerfile=danger/TestDangerfile --danger_id='xcodebuild-#{result[:destination]}'"
+      Rake.sh "#{@danger} --dangerfile=#{dangerfile} --danger_id='xcodebuild-#{result[:destination]}'"
     end
-    Rake.sh "#{command} --dangerfile=danger/CompletionDangerfile --danger_id='completion'"
+  end
+
+  def post_test
+    dangerfile = @config['danger.dangerfile_paths.post_test']
+    return if dangerfile.nil?
+    Rake.sh "#{@danger} --dangerfile=#{dangerfile} --danger_id='post_test'"
   end
 end
+
+# -- Xcode
 
 namespace 'xcode' do
   desc 'Run unit tests'
   task :tests, [:run_danger] do |_t, args|
     run_danger = args[:run_danger]
     xcode = Xcode.new
+    danger = Danger.new(xcode)
+    danger.pre_test if run_danger
     begin
       xcode.run_test
     rescue
       raise
     ensure
-      Danger.new(xcode).run if run_danger
+      danger.tests if run_danger
+      danger.post_test if run_danger
     end
-
   end
 
   task :clean_artifacts do
@@ -103,10 +103,6 @@ namespace 'xcode' do
   task :generate_ipa, [:env] do |_t, args|
     env = args[:env].to_s
     Xcode.new.generate_ipa env
-  end
-
-  task :bla do
-    puts Xcode.new.tests_results
   end
 
   # Xcode helper class
@@ -178,7 +174,7 @@ namespace 'xcode' do
       xcode_args_for_test = [] + xcode_args
       xcode_args_for_test << destinations.map { |dest| "-destination '#{dest}'" }.join(' ')
       xcode_args_for_test = xcode_args_for_test.join(' ')
-      xcode(xcode_args: "test-without-building -disable-concurrent-destination-testing #{xcode_args_for_test}", report_name: "#{report_name}-tests")
+      xcode(xcode_args: "test-without-building -maximum-concurrent-test-device-destinations 1 #{xcode_args_for_test}", report_name: "#{report_name}-tests")
     end
 
     def test_report_path
@@ -203,6 +199,7 @@ namespace 'xcode' do
                  report_name: "export-#{environment}")
     end
 
+    # TODO: remove
     # rubocop:disable Metrics/AbcSize
     def bla(scheme: '',
             actions: '',
