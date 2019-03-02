@@ -34,7 +34,7 @@ class Danger
   def initialize(xcode)
     @xcode = xcode
     @config = Config.instance
-    @danger = 'bundle exec danger local --verbose'
+    @danger = 'bundle exec danger --verbose'
   end
 
   def pre_test
