@@ -43,13 +43,18 @@ class Danger
     Rake.sh "#{@danger} --dangerfile=#{dangerfile} --danger_id='pre_test'"
   end
 
-  def tests
+  def build
     dangerfile = @config['danger.dangerfile_paths.test']
     return if dangerfile.nil?
     build_file = File.expand_path('result.json', @xcode.default_reports_path)
     Rake.sh "cat #{@xcode.test_report_path} | XCPRETTY_JSON_FILE_OUTPUT=#{build_file} xcpretty -f `bundle exec xcpretty-json-formatter`"
     ENV['XCODEBUILD_REPORT'] = build_file
     Rake.sh "#{@danger} --dangerfile=#{dangerfile} --danger_id='xcodebuild'"
+  end
+
+  def test
+    dangerfile = @config['danger.dangerfile_paths.test']
+    return if dangerfile.nil?
     @xcode.tests_results.each do |result|
       ENV['XCODEBUILD_REPORT'] = result[:xcodebuild_report]
       ENV['DANGER_TEST_DESCRIPTION'] = result[:test_description]
@@ -70,17 +75,31 @@ namespace 'xcode' do
   desc 'Run unit tests'
   task :tests, [:run_danger] do |_t, args|
     run_danger = args[:run_danger]
+    destinations = Config.instance['xcode.tests.destinations']
     xcode = Xcode.new
     danger = Danger.new(xcode)
+
     danger.pre_test if run_danger
+
     begin
-      xcode.run_test
+      xcode.build_for_test
     rescue
       raise
     ensure
-      danger.tests if run_danger
-      danger.post_test if run_danger
+      danger.build if run_danger
     end
+
+    destinations.each do |destination|
+      begin
+        xcode.run_test destination
+      rescue
+        raise
+      ensure
+        danger.test if run_danger
+      end
+    end
+
+    danger.post_test
   end
 
   task :clean_artifacts do
@@ -151,9 +170,8 @@ namespace 'xcode' do
 
     # Xcode
 
-    def run_test
+    def build_for_test
       scheme = @config['xcode.tests.scheme']
-      destinations = @config['xcode.tests.destinations']
       report_name = @test_report_name
 
       xcode_args = []
@@ -170,11 +188,37 @@ namespace 'xcode' do
       xcode_args_for_build = xcode_args_for_build.join' '
       xcode(xcode_args: "clean #{xcode_args_for_build}", report_name: "#{report_name}-clean")
       xcode(xcode_args: "analyze build-for-testing -enableCodeCoverage YES #{xcode_args_for_build}", report_name: "#{report_name}-build")
+    end
+
+    def run_test(destination)
+      scheme = @config['xcode.tests.scheme']
+      report_name = @test_report_name
+
+      xcode_args = []
+      xcode_args << 'CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= PROVISIONING_PROFILE='
+      xcode_args << if @config.workspace_path.nil?
+                      "-project #{@config.project_path}"
+                    else
+                      "-workspace '#{@config.workspace_path}'"
+                    end
+      xcode_args << "-scheme '#{scheme}'"
 
       xcode_args_for_test = [] + xcode_args
-      xcode_args_for_test << destinations.map { |dest| "-destination '#{dest}'" }.join(' ')
+      xcode_args_for_test << "-destination '#{destination}'"
       xcode_args_for_test = xcode_args_for_test.join(' ')
-      xcode(xcode_args: "test-without-building -maximum-concurrent-test-device-destinations 1 #{xcode_args_for_test}", report_name: "#{report_name}-tests")
+      xcode(xcode_args: "test-without-building #{xcode_args_for_test}", report_name: "#{report_name}-test-#{string_for_destination(destination)}")
+    end
+
+    def string_for_destination(destination)
+      elements = destination.split(',').map{ |h| h1, h2 = h.split('='); { h1 => h2 } }.reduce(:merge)
+      os = elements['OS']
+      device = elements['name']
+      name = os.to_s.empty? ? '' : os
+      unless device.to_s.empty?
+        name += '-' unless name.to_s.empty?
+        name += device
+      end
+      name.gsub(/\s+/, '')
     end
 
     def test_report_path
