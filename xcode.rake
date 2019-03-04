@@ -48,15 +48,16 @@ namespace 'xcode' do
       danger.build if run_danger == 'true'
     end
 
+    exceptions = []
     destinations.each do |destination|
-      begin
-        xcode.run_test destination
-      rescue
-        raise
-      ensure
-        danger.test if run_danger == 'true'
-      end
+      xcode.run_test destination
+    rescue => e
+      exceptions << e
+    ensure
+      danger.test if run_danger == 'true'
     end
+
+    raise exceptions.first unless exceptions.first.nil?
 
     danger.post_test if run_danger == 'true'
   end
