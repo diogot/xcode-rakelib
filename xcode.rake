@@ -28,47 +28,6 @@ rescue LoadError
   puts 'plist not installed yet!'
 end
 
-# -- danger
-
-class Danger
-  def initialize(xcode)
-    @xcode = xcode
-    @config = Config.instance
-    @danger = 'bundle exec danger --verbose'
-  end
-
-  def pre_test
-    dangerfile = @config['danger.dangerfile_paths.pre_test']
-    return if dangerfile.nil?
-    Rake.sh "#{@danger} --dangerfile=#{dangerfile} --danger_id='pre_test'"
-  end
-
-  def build
-    dangerfile = @config['danger.dangerfile_paths.test']
-    return if dangerfile.nil?
-    build_file = File.expand_path('result.json', @xcode.default_reports_path)
-    Rake.sh "cat #{@xcode.test_report_path} | XCPRETTY_JSON_FILE_OUTPUT=#{build_file} xcpretty -f `bundle exec xcpretty-json-formatter`"
-    ENV['XCODEBUILD_REPORT'] = build_file
-    Rake.sh "#{@danger} --dangerfile=#{dangerfile} --danger_id='xcodebuild'"
-  end
-
-  def test
-    dangerfile = @config['danger.dangerfile_paths.test']
-    return if dangerfile.nil?
-    @xcode.tests_results.each do |result|
-      ENV['XCODEBUILD_REPORT'] = result[:xcodebuild_report]
-      ENV['DANGER_TEST_DESCRIPTION'] = result[:test_description]
-      Rake.sh "#{@danger} --dangerfile=#{dangerfile} --danger_id='xcodebuild-#{result[:destination]}'"
-    end
-  end
-
-  def post_test
-    dangerfile = @config['danger.dangerfile_paths.post_test']
-    return if dangerfile.nil?
-    Rake.sh "#{@danger} --dangerfile=#{dangerfile} --danger_id='post_test'"
-  end
-end
-
 # -- Xcode
 
 namespace 'xcode' do
@@ -79,14 +38,14 @@ namespace 'xcode' do
     xcode = Xcode.new
     danger = Danger.new(xcode)
 
-    danger.pre_test if run_danger
+    danger.pre_test if run_danger == true
 
     begin
       xcode.build_for_test
     rescue
       raise
     ensure
-      danger.build if run_danger
+      danger.build if run_danger == true
     end
 
     destinations.each do |destination|
@@ -95,11 +54,11 @@ namespace 'xcode' do
       rescue
         raise
       ensure
-        danger.test if run_danger
+        danger.test if run_danger == true
       end
     end
 
-    danger.post_test
+    danger.post_test if run_danger == true
   end
 
   task :clean_artifacts do
@@ -174,43 +133,79 @@ namespace 'xcode' do
       scheme = @config['xcode.tests.scheme']
       report_name = @test_report_name
 
-      xcode_args = []
-      xcode_args << 'CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= PROVISIONING_PROFILE='
-      xcode_args << if @config.workspace_path.nil?
-                      "-project #{@config.project_path}"
-                    else
-                      "-workspace '#{@config.workspace_path}'"
-                    end
+      xcode_args = ['CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= PROVISIONING_PROFILE=']
+      xcode_args << project_or_workspace
       xcode_args << "-scheme '#{scheme}'"
+      xcode_args << '-destination "generic/platform=iOS Simulator"'
 
-      xcode_args_for_build = [] + xcode_args
-      xcode_args_for_build << '-destination "generic/platform=iOS Simulator"'
-      xcode_args_for_build = xcode_args_for_build.join' '
-      xcode(xcode_args: "clean #{xcode_args_for_build}", report_name: "#{report_name}-clean")
-      xcode(xcode_args: "analyze build-for-testing -enableCodeCoverage YES #{xcode_args_for_build}", report_name: "#{report_name}-build")
+      xcode(xcode_args: ['clean'] + xcode_args, report_name: "#{report_name}-clean")
+
+      xcode_args_for_build = ['analyze']
+      xcode_args_for_build << 'build-for-testing'
+      xcode_args_for_build << '-enableCodeCoverage YES'
+      xcode_args_for_build << 'build-for-testing'
+
+      xcode(xcode_args: xcode_args_for_build + xcode_args, report_name: "#{report_name}-build")
     end
 
     def run_test(destination)
       scheme = @config['xcode.tests.scheme']
       report_name = @test_report_name
 
-      xcode_args = []
-      xcode_args << 'CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= PROVISIONING_PROFILE='
-      xcode_args << if @config.workspace_path.nil?
-                      "-project #{@config.project_path}"
-                    else
-                      "-workspace '#{@config.workspace_path}'"
-                    end
+      xcode_args = ['CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= PROVISIONING_PROFILE=']
+      xcode_args << project_or_workspace
       xcode_args << "-scheme '#{scheme}'"
 
-      xcode_args_for_test = [] + xcode_args
+      xcode_args_for_test = ['test-without-building'] + xcode_args
       xcode_args_for_test << "-destination '#{destination}'"
-      xcode_args_for_test = xcode_args_for_test.join(' ')
-      xcode(xcode_args: "test-without-building #{xcode_args_for_test}", report_name: "#{report_name}-#{string_for_destination(destination)}")
+      xcode(xcode_args: xcode_args_for_test, report_name: "#{report_name}-#{string_for_destination(destination)}")
+    end
+
+    def archive(environment)
+      config = @config['xcode.release'][environment]
+
+      configuration = config['configuration']
+      xcode_args = [project_or_workspace]
+      xcode_args << "-configuration '#{configuration}'" unless configuration.to_s.strip.empty?
+      xcode_args << "-archivePath '#{archive_path(config['output'])}'"
+      xcode_args << "-destination 'generic/platform=iOS'"
+      xcode_args << "-scheme '#{config['scheme']}'"
+      xcode_args << 'clean archive'
+      xcode(xcode_args: xcode_args, report_name: "archive-#{environment}")
+    end
+
+    def generate_ipa(environment)
+      config = @config['xcode.release'][environment]
+
+      export_path = export_path(config['output'])
+      xcode_args = []
+      xcode_args << '-exportArchive'
+      xcode_args << "-archivePath '#{archive_path(config['output'])}'"
+      xcode_args << "-exportPath '#{export_path}'"
+      xcode_args << "-exportOptionsPlist '#{create_export_plist(aditional_options: config['sign'])}'"
+      Rake.sh "rm -rf '#{export_path}'"
+      xcode(xcode_args: xcode_args, report_name: "export-#{environment}")
+    end
+
+    def xcode(xcode_args: [], report_name: '')
+      xcode_log_file = xcode_log_file(report_name: report_name)
+      report_file = "#{@reports_path}/#{report_name}.xml"
+      xcode_args = xcode_args.join ' '
+
+      Rake.sh "rm -f '#{xcode_log_file}' '#{report_file}'"
+      Rake.sh "set -o pipefail && #{xcode_version} xcrun xcodebuild #{xcode_args} | tee '#{xcode_log_file}' | xcpretty --color --no-utf -r junit -o '#{report_file}'"
+    end
+
+    def project_or_workspace
+      if @config.workspace_path.nil?
+        "-project #{@config.project_path}"
+      else
+        "-workspace '#{@config.workspace_path}'"
+      end
     end
 
     def string_for_destination(destination)
-      elements = destination.split(',').map{ |h| h1, h2 = h.split('='); { h1 => h2 } }.reduce(:merge)
+      elements = destination.split(',').map { |h| h1, h2 = h.split('='); { h1 => h2 } }.reduce(:merge)
       os = elements['OS']
       device = elements['name']
       name = os.to_s.empty? ? '' : os
@@ -223,71 +218,6 @@ namespace 'xcode' do
 
     def test_report_path
       xcode_log_file(report_name: "#{@test_report_name}-build")
-    end
-
-    def archive(environment)
-      config = @config['xcode.release'][environment]
-      bla(scheme: config['scheme'],
-          actions: 'clean archive',
-          destinations: ['generic/platform=iOS'],
-          configuration: config['configuration'],
-          report_name: "archive-#{environment}",
-          archive_path: archive_path(config['output']))
-    end
-
-    def generate_ipa(environment)
-      config = @config['xcode.release'][environment]
-      export_ipa(archive_path: archive_path(config['output']),
-                 export_path: export_path(config['output']),
-                 build_plist: create_export_plist(aditional_options: config['sign']),
-                 report_name: "export-#{environment}")
-    end
-
-    # TODO: remove
-    # rubocop:disable Metrics/AbcSize
-    def bla(scheme: '',
-            actions: '',
-            destinations: [],
-            configuration: '',
-            report_name: '',
-            archive_path: '')
-
-      xcode_args = []
-      xcode_args << "-configuration '#{configuration}'" unless configuration.to_s.strip.empty?
-      xcode_args << 'CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= PROVISIONING_PROFILE=' unless actions.include? 'archive'
-      xcode_args << (archive_path.to_s.strip.empty? ? '-enableCodeCoverage YES' : "-archivePath '#{archive_path}'")
-      xcode_args << destinations.map { |dest| "-destination '#{dest}'" }.join(' ')
-      xcode_args << if @config.workspace_path.nil?
-                      "-project #{@config.project_path}"
-                    else
-                      "-workspace '#{@config.workspace_path}'"
-                    end
-      xcode_args << "-scheme '#{scheme}'"
-      xcode_args << actions
-      xcode_args = xcode_args.join ' '
-
-      xcode(xcode_args: xcode_args, report_name: report_name)
-    end
-    # rubocop:enable Metrics/AbcSize
-
-    def xcode(xcode_args: '',
-              report_name: '')
-      xcode_log_file = xcode_log_file(report_name: report_name)
-      report_file = "#{@reports_path}/#{report_name}.xml"
-
-      Rake.sh "rm -f '#{xcode_log_file}' '#{report_file}'"
-      Rake.sh "set -o pipefail && #{xcode_version} xcrun xcodebuild #{xcode_args} | tee '#{xcode_log_file}' | xcpretty --color --no-utf -r junit -o '#{report_file}'"
-    end
-
-    def export_ipa(archive_path: '',
-                   export_path: '',
-                   build_plist: '',
-                   report_name: '')
-      xcode_log_file = "#{@artifacts_path}/xcode-#{report_name}.log"
-      report_file = "#{@reports_path}/#{report_name}.xml"
-
-      Rake.sh "rm -rf '#{xcode_log_file}' '#{report_file}' #{export_path}"
-      Rake.sh "set -o pipefail && #{xcode_version} xcrun xcodebuild -exportArchive -archivePath '#{archive_path}' -exportPath '#{export_path}' -exportOptionsPlist '#{build_plist}' | tee '#{xcode_log_file}' | xcpretty --color --no-utf -r junit -o '#{report_file}'"
     end
 
     def create_export_plist(aditional_options: {})
@@ -398,6 +328,50 @@ namespace 'xcode' do
     end
   end
 
+  # Danger helper class
+  class Danger
+    def initialize(xcode)
+      @xcode = xcode
+      @config = Config.instance
+      @danger = 'bundle exec danger --verbose'
+    end
+
+    def pre_test
+      dangerfile = @config['danger.dangerfile_paths.pre_test']
+      return if dangerfile.nil?
+
+      Rake.sh "#{@danger} --dangerfile=#{dangerfile} --danger_id='pre_test'"
+    end
+
+    def build
+      dangerfile = @config['danger.dangerfile_paths.test']
+      return if dangerfile.nil?
+
+      build_file = File.expand_path('result.json', @xcode.default_reports_path)
+      Rake.sh "cat #{@xcode.test_report_path} | XCPRETTY_JSON_FILE_OUTPUT=#{build_file} xcpretty -f `bundle exec xcpretty-json-formatter`"
+      ENV['XCODEBUILD_REPORT'] = build_file
+      Rake.sh "#{@danger} --dangerfile=#{dangerfile} --danger_id='xcodebuild'"
+    end
+
+    def test
+      dangerfile = @config['danger.dangerfile_paths.test']
+      return if dangerfile.nil?
+
+      @xcode.tests_results.each do |result|
+        ENV['XCODEBUILD_REPORT'] = result[:xcodebuild_report]
+        ENV['DANGER_TEST_DESCRIPTION'] = result[:test_description]
+        Rake.sh "#{@danger} --dangerfile=#{dangerfile} --danger_id='xcodebuild-#{result[:destination]}'"
+      end
+    end
+
+    def post_test
+      dangerfile = @config['danger.dangerfile_paths.post_test']
+      return if dangerfile.nil?
+
+      Rake.sh "#{@danger} --dangerfile=#{dangerfile} --danger_id='post_test'"
+    end
+  end
+
   # Based on https://github.com/fastlane/fastlane/blob/master/fastlane_core/lib/fastlane_core/test_parser.rb
   class TestParser
     attr_accessor :data
@@ -447,12 +421,8 @@ namespace 'xcode' do
 
       tests = []
       data.each do |current_hash|
-        if current_hash['Subtests']
-          tests += unfold_tests(current_hash['Subtests'])
-        end
-        if current_hash['TestStatus']
-          tests << current_hash
-        end
+        tests += unfold_tests(current_hash['Subtests']) if current_hash['Subtests']
+        tests << current_hash if current_hash['TestStatus']
       end
       return tests
     end
