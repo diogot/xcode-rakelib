@@ -29,6 +29,7 @@ namespace 'swiftgen' do
   task :strings do
     config = Config.instance.active 'swiftgen.strings'
     next if config.nil?
+
     path = config['path']
     template = config['template']
     files = config['strings']
