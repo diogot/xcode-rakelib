@@ -38,14 +38,14 @@ namespace 'xcode' do
     xcode = Xcode.new
     danger = Danger.new(xcode)
 
-    danger.pre_test if run_danger == true
+    danger.pre_test if run_danger == 'true'
 
     begin
       xcode.build_for_test
     rescue
       raise
     ensure
-      danger.build if run_danger == true
+      danger.build if run_danger == 'true'
     end
 
     destinations.each do |destination|
@@ -54,11 +54,11 @@ namespace 'xcode' do
       rescue
         raise
       ensure
-        danger.test if run_danger == true
+        danger.test if run_danger == 'true'
       end
     end
 
-    danger.post_test if run_danger == true
+    danger.post_test if run_danger == 'true'
   end
 
   task :clean_artifacts do
@@ -333,7 +333,7 @@ namespace 'xcode' do
     def initialize(xcode)
       @xcode = xcode
       @config = Config.instance
-      @danger = 'bundle exec danger --verbose'
+      @danger = 'bundle exec danger local --verbose'
     end
 
     def pre_test
@@ -424,29 +424,29 @@ namespace 'xcode' do
         tests += unfold_tests(current_hash['Subtests']) if current_hash['Subtests']
         tests << current_hash if current_hash['TestStatus']
       end
-      return tests
+      tests
     end
 
     # Convert the Hashes and Arrays in something more useful
     def parse_content
-      self.data = self.raw_json["TestableSummaries"].collect do |testable_summary|
+      self.data = raw_json['TestableSummaries'].collect do |testable_summary|
         summary_row = {
-          project_path: testable_summary["ProjectPath"],
-          target_name: testable_summary["TargetName"],
-          test_name: testable_summary["TestName"],
-          duration: testable_summary["Tests"].map { |current_test| current_test["Duration"] }.inject(:+),
-          tests: unfold_tests(testable_summary["Tests"]).collect do |current_test|
+          project_path: testable_summary['ProjectPath'],
+          target_name: testable_summary['TargetName'],
+          test_name: testable_summary['TestName'],
+          duration: testable_summary['Tests'].map { |current_test| current_test['Duration'] }.inject(:+),
+          tests: unfold_tests(testable_summary['Tests']).collect do |current_test|
             current_row = {
-              identifier: current_test["TestIdentifier"],
-              test_group: current_test["TestIdentifier"].split("/")[0..-2].join("."),
-              name: current_test["TestName"],
-              object_class: current_test["TestObjectClass"],
-              status: current_test["TestStatus"],
-              guid: current_test["TestSummaryGUID"],
-              duration: current_test["Duration"]
+              identifier: current_test['TestIdentifier'],
+              test_group: current_test['TestIdentifier'].split('/')[0..-2].join('.'),
+              name: current_test['TestName'],
+              object_class: current_test['TestObjectClass'],
+              status: current_test['TestStatus'],
+              guid: current_test['TestSummaryGUID'],
+              duration: current_test['Duration']
             }
-            if current_test["FailureSummaries"]
-              current_row[:failures] = current_test["FailureSummaries"].collect do |current_failure|
+            if current_test['FailureSummaries']
+              current_row[:failures] = current_test['FailureSummaries'].collect do |current_failure|
                 {
                   file_name: current_failure['FileName'],
                   line_number: current_failure['LineNumber'],
@@ -460,11 +460,12 @@ namespace 'xcode' do
           end
         }
         summary_row[:number_of_tests] = summary_row[:tests].count
-        summary_row[:number_of_failures] = summary_row[:tests].find_all { |a| (a[:failures] || []).count > 0 }.count
+        summary_row[:number_of_failures] = summary_row[:tests].find_all { |a| (a[:failures] || []).count.positive? }.count
         summary_row
       end
-      self.data.first[:run_destination_name] = self.raw_json["RunDestination"]["Name"]
-      return self.data
+      data.first[:run_destination_name] = raw_json['RunDestination']['Name']
+
+      data
     end
   end
 end
