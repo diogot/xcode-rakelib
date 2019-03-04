@@ -35,6 +35,7 @@ namespace 'setup' do
   task :bundler do
     config = Config.instance.active 'setup.bundler'
     next if config.nil?
+
     path = ENV['BUNDLER_PATH'] || config['path']
     bundler_path_option = path.nil? ? '' : "--path=#{path}"
     sh "bundle check #{bundler_path_option} || bundle install #{bundler_path_option} --jobs=4 --retry=3"
@@ -44,8 +45,10 @@ namespace 'setup' do
   task :brew do
     config = Config.instance.active 'setup.brew'
     next if config.nil?
+
     formulas = config['formulas']
     next if formulas.nil?
+
     brew = Brew.new
     brew.update
     formulas.each { |formula| brew.install formula }
@@ -59,6 +62,7 @@ namespace 'setup' do
 
     def install(formula)
       raise 'no formula' if formula.to_s.strip.empty?
+
       Rake.sh " ( brew list #{formula} ) && ( brew outdated #{formula} || brew upgrade #{formula} ) || ( brew install #{formula} ) "
     end
   end
@@ -71,6 +75,7 @@ namespace 'setup' do
   task :submodules do
     submodules = Config.instance.active 'setup.submodules'
     next if submodules.nil?
+
     sh 'git submodule update --init --recursive'
   end
 
@@ -80,6 +85,7 @@ namespace 'setup' do
   task :cocoapods do
     cocoapods = Config.instance.active 'setup.cocoapods'
     next if cocoapods.nil?
+
     Cocoapods.new.run
   end
 
@@ -129,6 +135,7 @@ namespace 'setup' do
   task :carthage do
     carthage = Config.instance.active 'setup.carthage'
     next if carthage.nil?
+
     Rake::Task['setup:carthage_install'].invoke
   end
 
