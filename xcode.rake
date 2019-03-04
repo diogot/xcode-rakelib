@@ -206,7 +206,7 @@ namespace 'xcode' do
       xcode_args_for_test = [] + xcode_args
       xcode_args_for_test << "-destination '#{destination}'"
       xcode_args_for_test = xcode_args_for_test.join(' ')
-      xcode(xcode_args: "test-without-building #{xcode_args_for_test}", report_name: "#{report_name}-test-#{string_for_destination(destination)}")
+      xcode(xcode_args: "test-without-building #{xcode_args_for_test}", report_name: "#{report_name}-#{string_for_destination(destination)}")
     end
 
     def string_for_destination(destination)
@@ -215,7 +215,7 @@ namespace 'xcode' do
       device = elements['name']
       name = os.to_s.empty? ? '' : os
       unless device.to_s.empty?
-        name += '-' unless name.to_s.empty?
+        name += '_' unless name.to_s.empty?
         name += device
       end
       name.gsub(/\s+/, '')
