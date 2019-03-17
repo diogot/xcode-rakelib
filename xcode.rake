@@ -199,7 +199,7 @@ namespace 'xcode' do
 
     def project_or_workspace
       if @config.workspace_path.nil?
-        "-project #{@config.project_path}"
+        "-project '#{@config.project_path}'"
       else
         "-workspace '#{@config.workspace_path}'"
       end
