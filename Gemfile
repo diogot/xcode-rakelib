@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-gem 'danger', '~>5.5'
+gem 'danger', '~>6.0.3'
 gem 'danger-xcode_summary', '~>0.4'
 gem 'git', '~>1.3'
 gem 'plist', '~>3.2'
