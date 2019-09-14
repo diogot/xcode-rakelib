@@ -84,6 +84,11 @@ namespace 'xcode' do
     Xcode.new.generate_ipa env
   end
 
+  task :upload, [:env] do |_t, args|
+    env = args[:env].to_s
+    Xcode.new.upload env
+  end
+
   # Xcode helper class
   class Xcode
     require 'fileutils'
@@ -195,6 +200,13 @@ namespace 'xcode' do
 
       Rake.sh "rm -f '#{xcode_log_file}' '#{report_file}'"
       Rake.sh "set -o pipefail && #{xcode_version} xcrun xcodebuild #{xcode_args} | tee '#{xcode_log_file}' | xcpretty --color --no-utf -r junit -o '#{report_file}'"
+    end
+
+    def upload(environment)
+      config = @config['xcode.release'][environment]
+      ipa = "#{export_path(config['output'])}/#{config['output']}.ipa"
+      pass = ENV['APP_STORE_PASS'] ? " -p @env:APP_STORE_PASS" : ''
+      Rake.sh "#{xcode_version} xcrun altool --upload-app -f '#{ipa}' -u #{config['app_store_account']} #{pass}"
     end
 
     def project_or_workspace
