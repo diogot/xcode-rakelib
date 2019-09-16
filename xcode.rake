@@ -204,7 +204,7 @@ namespace 'xcode' do
 
     def upload(environment)
       config = @config['xcode.release'][environment]
-      ipa = "#{export_path(config['output'])}/#{config['output']}.ipa"
+      ipa = "#{export_path(config['output'])}/#{config['scheme']}.ipa"
       pass = ENV['APP_STORE_PASS'] ? " -p @env:APP_STORE_PASS" : ''
       Rake.sh "#{xcode_version} xcrun altool --upload-app -f '#{ipa}' -u #{config['app_store_account']} #{pass}"
     end
