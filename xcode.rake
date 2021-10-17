@@ -54,7 +54,7 @@ namespace 'xcode' do
     rescue => e
       exceptions << e
     ensure
-      danger.test if run_danger == 'true'
+      danger.test(destination) if run_danger == 'true'
     end
 
     raise exceptions.first unless exceptions.first.nil?
@@ -196,9 +196,11 @@ namespace 'xcode' do
     def xcode(xcode_args: [], report_name: '')
       xcode_log_file = xcode_log_file(report_name: report_name)
       report_file = "#{@reports_path}/#{report_name}.xml"
+      results_file = xcode_results_path(report_name: report_name)
+      xcode_args << "-resultBundlePath '#{results_file}'"
       xcode_args = xcode_args.join ' '
 
-      Rake.sh "rm -f '#{xcode_log_file}' '#{report_file}'"
+      Rake.sh "rm -rf '#{xcode_log_file}' '#{report_file}' '#{results_file}'"
       Rake.sh "set -o pipefail && #{xcode_version} xcrun xcodebuild #{xcode_args} | tee '#{xcode_log_file}' | xcpretty --color --no-utf -r junit -o '#{report_file}'"
     end
 
@@ -233,6 +235,14 @@ namespace 'xcode' do
       xcode_log_file(report_name: "#{@test_report_name}-build")
     end
 
+    def xcode_results_path(report_name: '')
+      "#{@reports_path}/#{report_name}.xcresult"
+    end
+
+    def xcode_results(destination: '')
+      xcode_results_path(report_name: "#{@test_report_name}-#{string_for_destination(destination)}")
+    end
+
     def create_export_plist(aditional_options: {})
       default_plist = { method: 'app-store' }
       plist = default_plist.merge(aditional_options)
@@ -240,6 +250,12 @@ namespace 'xcode' do
       plist_path = "#{@artifacts_path}/export.plist"
       plist.save_plist plist_path
       plist_path
+    end
+
+    def test_results(destination)
+      {
+        xcode_results: xcode_results(destination: destination)
+      }
     end
 
     def tests_results
@@ -360,21 +376,17 @@ namespace 'xcode' do
       dangerfile = @config['danger.dangerfile_paths.test']
       return if dangerfile.nil?
 
-      build_file = File.expand_path('result.json', @xcode.default_reports_path)
-      Rake.sh "cat #{@xcode.test_report_path} | XCPRETTY_JSON_FILE_OUTPUT=#{build_file} xcpretty -f `bundle exec xcpretty-json-formatter`"
-      ENV['XCODEBUILD_REPORT'] = build_file
+      ENV['XCODE_RESULTS'] = @xcode.xcode_results_path(report_name: 'tests-build')
       Rake.sh "#{@danger} --dangerfile=#{dangerfile} --danger_id='xcodebuild'"
     end
 
-    def test
+    def test(destination)
       dangerfile = @config['danger.dangerfile_paths.test']
       return if dangerfile.nil?
 
-      @xcode.tests_results.each do |result|
-        ENV['XCODEBUILD_REPORT'] = result[:xcodebuild_report]
-        ENV['DANGER_TEST_DESCRIPTION'] = result[:test_description]
-        Rake.sh "#{@danger} --dangerfile=#{dangerfile} --danger_id='xcodebuild-#{result[:destination]}'"
-      end
+      results = @xcode.test_results(destination)
+      ENV['XCODE_RESULTS'] = results[:xcode_results]
+      Rake.sh "#{@danger} --dangerfile=#{dangerfile} --danger_id='xcodebuild-#{destination}'"
     end
 
     def post_test
