@@ -115,7 +115,7 @@ namespace 'setup' do
     # rubocop:disable Lint/RescueException
     def needs_to_run_pod_install
       !FileUtils.identical?(Path.of('Podfile.lock'), Path.of('Pods/Manifest.lock'))
-    rescue Exception => _
+    rescue Exception => _e
       true
     end
     # rubocop:enable Lint/RescueException

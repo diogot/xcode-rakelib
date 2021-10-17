@@ -35,7 +35,7 @@ class Path
   def self.of(file, fail_when_missing: true)
     return nil if file.nil?
 
-    path = File.expand_path(file, File.dirname(__FILE__) + '/../')
+    path = File.expand_path(file, "#{File.dirname(__FILE__)}/../")
     raise "File '#{path}' not found" if fail_when_missing && !File.exist?(path)
 
     path

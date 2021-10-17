@@ -5,6 +5,12 @@ Metrics/ParameterLists:
 Metrics/MethodLength:
   Max: 20
 
+Metrics/ClassLength:
+  Max: 200
+
+Style/RescueStandardError:
+  EnforcedStyle: implicit
+
 Metrics/BlockLength:
   Exclude:
   - '**/*.rake'
@@ -12,3 +18,6 @@ Metrics/BlockLength:
 # TODO: remove
 Metrics/LineLength:
   Max: 270
+
+Lint/ConstantDefinitionInBlock:
+  Enabled: false

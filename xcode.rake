@@ -42,7 +42,7 @@ namespace 'xcode' do
 
     begin
       xcode.build_for_test
-    rescue
+    rescue e
       raise
     ensure
       danger.build if run_danger == 'true'
@@ -207,7 +207,7 @@ namespace 'xcode' do
     def upload(environment)
       config = @config['xcode.release'][environment]
       ipa = "#{export_path(config['output'])}/#{config['scheme']}.ipa"
-      pass = ENV['APP_STORE_PASS'] ? " -p @env:APP_STORE_PASS" : ''
+      pass = ENV['APP_STORE_PASS'] ? ' -p @env:APP_STORE_PASS' : ''
       Rake.sh "#{xcode_version} xcrun altool --upload-app -f '#{ipa}' -u #{config['app_store_account']} #{pass}"
     end
 
@@ -220,7 +220,9 @@ namespace 'xcode' do
     end
 
     def string_for_destination(destination)
+      # rubocop:disable Style/Semicolon
       elements = destination.split(',').map { |h| h1, h2 = h.split('='); { h1 => h2 } }.reduce(:merge)
+      # rubocop:enable Style/Semicolon
       os = elements['OS']
       device = elements['name']
       name = os.to_s.empty? ? '' : os
